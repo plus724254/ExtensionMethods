@@ -83,12 +83,62 @@ namespace HuashanCRM.Extension
         /// <typeparam name="T"></typeparam>
         /// <param name="db"></param>
         /// <param name="entity"></param>
+        //public static void DetachWhenExist<T>(this DbContext db, T entity) where T : class
+        //{
+        //    var localEntity = db.FindLocal(entity);
+        //    if (localEntity != null)
+        //    {
+        //        db.Detach(localEntity);
+        //    }
+        //}
+
+        //public static void DetachRangeWhenExist<T>(this DbContext db, IEnumerable<T> entities) where T : class
+        //{
+        //    var entityTemplate = entities.FirstOrDefault();
+        //    var entityKeys = db.GetEntityKeys<T>();
+        //    var findExpression = GetFindExpression(entityTemplate, entityKeys).Compile();
+
+        //    foreach (var entity in entities)
+        //    {
+        //        var localEntity = db.FindLocal(entityTemplate, entityKeys, findExpression);
+
+        //        if (localEntity != null)
+        //        {
+        //            db.Detach(localEntity);
+        //        }
+        //    }
+        //}
+
+        /// <summary>
+        /// 若本地快取存在實體，將他移除快取
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="db"></param>
+        /// <param name="entity"></param>
         public static void DetachWhenExist<T>(this DbContext db, T entity) where T : class
         {
-            var localEntity = db.FindLocal(entity);
-            if (localEntity != null)
+            var objContext = ((IObjectContextAdapter)db).ObjectContext;
+            var objSet = objContext.CreateObjectSet<T>();
+            var entityKey = objContext.CreateEntityKey(objSet.EntitySet.Name, entity);
+            var exists = objContext.TryGetObjectByKey(entityKey, out var foundEntity);
+            if (exists)
             {
-                db.Detach(localEntity);
+                objContext.Detach(foundEntity);
+            }
+        }
+
+        public static void DetachRangeWhenExist<T>(this DbContext db, IEnumerable<T> entities) where T : class
+        {
+            var objContext = ((IObjectContextAdapter)db).ObjectContext;
+            var objSet = objContext.CreateObjectSet<T>();
+
+            foreach(var entity in entities)
+            {
+                var entityKey = objContext.CreateEntityKey(objSet.EntitySet.Name, entity);
+                if (objContext.TryGetObjectByKey(entityKey, out var foundEntity))
+                {
+                    objContext.Detach(foundEntity);
+                }
             }
         }
     }
